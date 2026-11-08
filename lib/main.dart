@@ -1,7 +1,7 @@
+
 import 'package:flutter/material.dart';
 
-import 'homepage.dart';
-import 'loginpage.dart';
+import 'auth/auth_gate.dart';
 import 'registrationpage.dart';
 import 'supabase_config.dart';
 
@@ -27,12 +27,10 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFFFF1F6),
       ),
 
-      initialRoute: '/',
+      home: const AuthGate(),
 
       routes: {
-        '/': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
-        '/home': (context) => const HomePage(),
       },
     );
   }
