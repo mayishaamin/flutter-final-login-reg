@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_config.dart';
@@ -11,6 +10,10 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  static const green = Color(0xFF789B59);
+  static const strawberry = Color(0xFFF29AA5);
+  static const cream = Color(0xFFFFF1E6);
+
   final _formKey = GlobalKey<FormState>();
   final _email = TextEditingController();
   final _password = TextEditingController();
@@ -18,15 +21,13 @@ class _LoginPageState extends State<LoginPage> {
   bool _hidePassword = true;
 
   final _emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-  final _passwordRegex = RegExp(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$');
 
   void _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (!supabaseReady) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text(
-          'Please add your Supabase URL and Publishable Key')),
+        const SnackBar(content: Text('Please add Supabase URL and Key')),
       );
       return;
     }
@@ -42,12 +43,12 @@ class _LoginPageState extends State<LoginPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Logging in...')),
       );
-      // AuthGate automatically shows HomePage.
-    } on AuthException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.message)),
+        );
+      }
     }
   }
 
@@ -55,18 +56,17 @@ class _LoginPageState extends State<LoginPage> {
       {Widget? suffix}) {
     return InputDecoration(
       labelText: label,
-      prefixIcon: Icon(icon, size: 20),
+      prefixIcon: Icon(icon, size: 20, color: green),
       suffixIcon: suffix,
       contentPadding: const EdgeInsets.symmetric(
         horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFFFFC1D9)),
+        borderSide: const BorderSide(color: strawberry),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(
-          color: Color(0xFFE879A5), width: 1.5),
+        borderSide: const BorderSide(color: green, width: 1.5),
       ),
     );
   }
@@ -81,6 +81,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: cream,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -90,7 +91,7 @@ class _LoginPageState extends State<LoginPage> {
               color: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: Color(0xFFFFC1D9)),
+                side: const BorderSide(color: strawberry),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -106,14 +107,14 @@ class _LoginPageState extends State<LoginPage> {
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFFE879A5),
+                          color: green,
                         ),
                       ),
                       const SizedBox(height: 4),
                       const Text(
                         'Sign in to continue',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                        style: TextStyle(color: Colors.grey),
                       ),
                       const SizedBox(height: 24),
 
@@ -123,8 +124,12 @@ class _LoginPageState extends State<LoginPage> {
                         decoration: _decoration(
                           'Email', Icons.email_outlined),
                         validator: (v) {
-                          if (v == null || v.isEmpty) return 'Please enter your email';
-                          if (!_emailRegex.hasMatch(v)) return 'Please enter a valid email';
+                          if (v == null || v.isEmpty) {
+                            return 'Please enter your email';
+                          }
+                          if (!_emailRegex.hasMatch(v)) {
+                            return 'Please enter a valid email';
+                          }
                           return null;
                         },
                       ),
@@ -137,32 +142,34 @@ class _LoginPageState extends State<LoginPage> {
                           'Password',
                           Icons.lock_outline,
                           suffix: IconButton(
-                            icon: Icon(_hidePassword
-                                ? Icons.visibility_off : Icons.visibility),
+                            icon: Icon(
+                              _hidePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility,
+                              color: green,
+                            ),
                             onPressed: () => setState(
                               () => _hidePassword = !_hidePassword),
                           ),
                         ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Please enter your password';
-                          if (!_passwordRegex.hasMatch(v)) return 'Must be 8+ chars (1 letter & 1 number)';
-                          return null;
-                        },
+                        validator: (v) =>
+                            v == null || v.isEmpty
+                                ? 'Please enter your password'
+                                : null,
                       ),
                       const SizedBox(height: 24),
 
                       FilledButton(
                         onPressed: _handleLogin,
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFE879A5),
+                          backgroundColor: green,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text('Login',
-                          style: TextStyle(fontSize: 16)),
+                        child: const Text('Login'),
                       ),
                       const SizedBox(height: 12),
 
@@ -171,7 +178,7 @@ class _LoginPageState extends State<LoginPage> {
                           context, '/register'),
                         child: const Text(
                           "Don't have an account? Register",
-                          style: TextStyle(color: Color(0xFFE879A5)),
+                          style: TextStyle(color: strawberry),
                         ),
                       ),
                     ],

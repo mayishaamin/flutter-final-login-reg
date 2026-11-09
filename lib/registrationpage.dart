@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'supabase_config.dart';
@@ -11,61 +10,121 @@ class RegisterPage extends StatefulWidget {
 }
 
 class _RegisterPageState extends State<RegisterPage> {
+  static const green = Color(0xFF789B59);
+  static const strawberry = Color(0xFFF29AA5);
+  static const cream = Color(0xFFFFF1E6);
+
   final _formKey = GlobalKey<FormState>();
   final _name = TextEditingController();
   final _email = TextEditingController();
   final _password = TextEditingController();
   final _confirm = TextEditingController();
 
-  bool _hidePassword = true;
-  bool _hideConfirm = true;
+  bool _loading = false, _hidePass = true, _hideConfirm = true;
 
-  final _nameRegex = RegExp(r'^[a-zA-Z\s]{2,50}$');
+  final _nameRegex = RegExp(r'^[a-zA-Z .]{2,50}$');
   final _emailRegex = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
-  final _passwordRegex = RegExp(r'^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d]{8,}$');
+  final _passwordRegex = RegExp(
+    r'^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[@#$%^&+=])(?=\S+$).{8,}$',
+  );
 
-  void _handleRegister() async {
+  String? _nameCheck(String? v) =>
+      v == null || v.isEmpty ? 'Enter your name' :
+      !_nameRegex.hasMatch(v) ? 'Enter a valid name' : null;
+
+  String? _emailCheck(String? v) =>
+      v == null || v.isEmpty ? 'Enter your email' :
+      !_emailRegex.hasMatch(v) ? 'Enter a valid email' : null;
+
+  String? _passwordCheck(String? v) =>
+      v == null || v.isEmpty ? 'Enter password' :
+      !_passwordRegex.hasMatch(v)
+          ? 'Use 8+ chars, uppercase, lowercase, number & symbol'
+          : null;
+
+  String? _confirmCheck(String? v) =>
+      v == null || v.isEmpty ? 'Confirm password' :
+      v != _password.text ? 'Passwords do not match' : null;
+
+  Widget _field(TextEditingController c, String label, IconData icon,
+      {TextInputType type = TextInputType.text,
+      bool obscure = false,
+      Widget? suffix,
+      String? Function(String?)? validator}) {
+    return TextFormField(
+      controller: c,
+      keyboardType: type,
+      obscureText: obscure,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon, size: 20, color: green),
+        suffixIcon: suffix,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16, vertical: 16),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: strawberry),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: green, width: 1.5),
+        ),
+      ),
+      validator: validator,
+    );
+  }
+
+  void _message(String text) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(text)),
+    );
+  }
+
+  Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
 
     if (!supabaseReady) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please add Supabase URL and Key')),
-      );
+      _message('Supabase is not ready');
       return;
     }
 
+    setState(() => _loading = true);
+
     try {
-      await Supabase.instance.client.auth.signUp(
-        email: _email.text.trim(),
+      final name = _name.text.trim();
+      final email = _email.text.trim();
+
+      final result = await Supabase.instance.client.auth.signUp(
+        email: email,
         password: _password.text,
-        data: {'full_name': _name.text.trim()},
+        data: {'full_name': name},
       );
+
+      if (result.user != null) {
+        await Supabase.instance.client.from('profiles').insert({
+          'id': result.user!.id,
+          'name': name,
+          'email': email,
+        });
+      }
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registration Successful!')),
-      );
+      _name.clear();
+      _email.clear();
+      _password.clear();
+      _confirm.clear();
+
+      _message('Registration Successful!');
       Navigator.pop(context);
-    } on AuthException catch (error) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
-    }
-  }
 
-  InputDecoration _decoration(String label, IconData icon,
-      {Widget? suffix}) {
-    return InputDecoration(
-      labelText: label,
-      prefixIcon: Icon(icon, size: 20),
-      suffixIcon: suffix,
-      contentPadding: const EdgeInsets.symmetric(
-        horizontal: 16, vertical: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12)),
-    );
+    } on AuthException catch (e) {
+      if (mounted) _message(e.message);
+    } catch (e) {
+      if (mounted) _message(e.toString());
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -80,6 +139,7 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: cream,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -89,7 +149,7 @@ class _RegisterPageState extends State<RegisterPage> {
               color: Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
-                side: const BorderSide(color: Color(0xFFFFC1D9)),
+                side: const BorderSide(color: strawberry),
               ),
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -105,95 +165,83 @@ class _RegisterPageState extends State<RegisterPage> {
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
+                          color: green,
                         ),
                       ),
                       const SizedBox(height: 4),
                       const Text(
                         'Fill in your details',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey, fontSize: 14),
+                        style: TextStyle(color: Colors.grey),
                       ),
                       const SizedBox(height: 24),
 
-                      TextFormField(
-                        controller: _name,
-                        decoration: _decoration(
-                          'Full Name', Icons.person_outline),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Please enter your name';
-                          if (!_nameRegex.hasMatch(v)) return 'Enter valid name (min 2 chars)';
-                          return null;
-                        },
-                      ),
+                      _field(_name, 'Full Name', Icons.person_outline,
+                        validator: _nameCheck),
                       const SizedBox(height: 16),
 
-                      TextFormField(
-                        controller: _email,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: _decoration(
-                          'Email', Icons.email_outlined),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Please enter an email';
-                          if (!_emailRegex.hasMatch(v)) return 'Please enter a valid email';
-                          return null;
-                        },
-                      ),
+                      _field(_email, 'Email', Icons.email_outlined,
+                        type: TextInputType.emailAddress,
+                        validator: _emailCheck),
                       const SizedBox(height: 16),
 
-                      TextFormField(
-                        controller: _password,
-                        obscureText: _hidePassword,
-                        decoration: _decoration(
-                          'Password',
-                          Icons.lock_outline,
-                          suffix: IconButton(
-                            icon: Icon(_hidePassword
-                                ? Icons.visibility_off : Icons.visibility),
-                            onPressed: () => setState(
-                              () => _hidePassword = !_hidePassword),
+                      _field(_password, 'Password', Icons.lock_outline,
+                        obscure: _hidePass,
+                        suffix: IconButton(
+                          icon: Icon(
+                            _hidePass ? Icons.visibility_off : Icons.visibility,
+                            color: green,
                           ),
+                          onPressed: () => setState(
+                            () => _hidePass = !_hidePass),
                         ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Please enter a password';
-                          if (!_passwordRegex.hasMatch(v)) return 'Must be 8+ chars (1 letter & 1 number)';
-                          return null;
-                        },
-                      ),
+                        validator: _passwordCheck),
                       const SizedBox(height: 16),
 
-                      TextFormField(
-                        controller: _confirm,
-                        obscureText: _hideConfirm,
-                        decoration: _decoration(
-                          'Confirm Password',
-                          Icons.lock_reset,
-                          suffix: IconButton(
-                            icon: Icon(_hideConfirm
-                                ? Icons.visibility_off : Icons.visibility),
-                            onPressed: () => setState(
-                              () => _hideConfirm = !_hideConfirm),
+                      _field(_confirm, 'Confirm Password', Icons.lock_reset,
+                        obscure: _hideConfirm,
+                        suffix: IconButton(
+                          icon: Icon(
+                            _hideConfirm
+                                ? Icons.visibility_off
+                                : Icons.visibility,
+                            color: green,
                           ),
+                          onPressed: () => setState(
+                            () => _hideConfirm = !_hideConfirm),
                         ),
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Please confirm your password';
-                          if (v != _password.text) return 'Passwords do not match';
-                          return null;
-                        },
-                      ),
+                        validator: _confirmCheck),
                       const SizedBox(height: 24),
 
                       FilledButton(
-                        onPressed: _handleRegister,
+                        onPressed: _loading ? null : _register,
                         style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFE879A5),
+                          backgroundColor: green,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                         ),
-                        child: const Text('Register',
-                          style: TextStyle(fontSize: 16)),
+                        child: _loading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text('Register'),
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          'Already have an account? Login',
+                          style: TextStyle(color: strawberry),
+                        ),
                       ),
                     ],
                   ),
